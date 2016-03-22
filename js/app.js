@@ -1,3 +1,80 @@
+/*------------------------------------------------------------------------------------------
+Functions to get TOP Answerers
+--------------------------------------------------------------------------------------------*/
+
+// this function takes the question object returned by the StackOverflow request
+// and returns new result to be appended to DOM
+var showTopAnswerer = function(item) {
+	
+	// clone our result template code
+	var result = $('.templates .topAnswerer').clone();
+	
+	// Set the name property in results 
+	var displayName = result.find('.topanswerer-displayname');
+	console.log(item.user.display_name);
+	displayName.text(item.user.display_name);
+
+	//set the profile image in results 
+	var img = "<br/><img src='" + item.user.profile_image + "' alt='" + item.user.display_name + "'>";
+	displayName.append(img);
+
+	// set the number of posts property in result
+	var numPosts = result.find('.topanswerer-numposts');
+	console.log(item.post_count);
+	numPosts.text(item.post_count);
+
+	// set the link property of the top answerer in result
+	var linkAnswerer = result.find('.topanswerer-link a');
+	linkAnswerer.attr('href', item.user.link);
+	linkAnswerer.text(item.user.link);
+
+
+	return result;
+};
+// takes a string of semi-colon separated tags to be searched
+// for on StackOverflow
+var getTopAnswerer = function(tags) {
+	console.log("Search Tag(s): " + tags);	
+	// the parameters we need to pass in our request to StackOverflow's API
+	var request = { 
+		tagged: tags,
+		site: 'stackoverflow',
+		order: 'desc',
+		sort: 'creation'
+	};
+	
+	var searchQueryUrl = "http://api.stackexchange.com/2.2/tags/" + tags + "/top-answerers/all_time";
+	console.log("Search URL: "+ searchQueryUrl);
+	$.ajax({
+		url: searchQueryUrl,
+		data: request,
+		dataType: "jsonp",//use jsonp to avoid cross origin issues
+		type: "GET",
+	})
+	.done(function(result){
+		console.log(result);
+
+	 //this waits for the ajax to return with a succesful promise object
+		var searchResults = showSearchResults(request.tagged, result.items.length);
+		$('.search-results').html(searchResults);
+		//$.each is a higher order function. It takes an array and a function as an argument.
+		//The function is executed once for each item in the array.
+		$.each(result.items, function(i, item) {
+			var topAnswerer = showTopAnswerer(item);
+			$('.results').append(topAnswerer);
+		});
+	})
+	.fail(function(jqXHR, error){ //this waits for the ajax to return with an error promise object
+		var errorElem = showError(error);
+		$('.search-results').append(errorElem);
+	});
+};
+
+
+/*------------------------------------------------------------------------------------------
+Functions to get unanswered Questions
+--------------------------------------------------------------------------------------------*/
+
 // this function takes the question object returned by the StackOverflow request
 // and returns new result to be appended to DOM
 var showQuestion = function(question) {
@@ -8,6 +85,7 @@ var showQuestion = function(question) {
 	// Set the question properties in result
 	var questionElem = result.find('.question-text a');
 	questionElem.attr('href', question.link);
+	console.log(question.link);
 	questionElem.text(question.title);
 
 	// set the date asked property in result
@@ -49,7 +127,7 @@ var showError = function(error){
 // takes a string of semi-colon separated tags to be searched
 // for on StackOverflow
 var getUnanswered = function(tags) {
-	
+		
 	// the parameters we need to pass in our request to StackOverflow's API
 	var request = { 
 		tagged: tags,
@@ -81,6 +159,9 @@ var getUnanswered = function(tags) {
 	});
 };
 
+/*------------------------------------------------------------------------------------------
+Calling The functions for both Top Answeres and Unanswered Questions
+--------------------------------------------------------------------------------------------*/
 
 $(document).ready( function() {
 	$('.unanswered-getter').submit( function(e){
@@ -91,4 +172,13 @@ $(document).ready( function() {
 		var tags = $(this).find("input[name='tags']").val();
 		getUnanswered(tags);
 	});
+
+	$('.inspiration-getter').submit(function(e){
+		e.preventDefault();
+		//cleaning Results area if previous search has run
+		$('.results').html('');
+		// get the value of the tags the user submitted
+		var tags = $(this).find("input[name='answerers']").val();
+		getTopAnswerer(tags);
+	})
 });
